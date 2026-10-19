@@ -72,7 +72,7 @@ app.post("/api/jobs", async (req, reply) => {
 
   const jobDir = path.join(WORK_DIR, jobId);
   fs.mkdirSync(jobDir, { recursive: true });
-  const sourceDir = path.join(jobDir, "source");
+  let sourceDir = path.join(jobDir, "source");
   fs.mkdirSync(sourceDir, { recursive: true });
 
   // extract
@@ -84,6 +84,10 @@ app.post("/api/jobs", async (req, reply) => {
 
   // detect
   const detection: DetectionResult = detectProject(sourceDir);
+  // adjust sourceDir if project is nested
+  if (detection.projectRoot && detection.projectRoot !== ".") {
+    sourceDir = path.join(sourceDir, detection.projectRoot);
+  }
 
   const job: JobRecord = {
     id: jobId,

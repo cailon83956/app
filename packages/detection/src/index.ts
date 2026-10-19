@@ -27,7 +27,7 @@ function findFile(root: string, predicate: (rel: string) => boolean): string | u
   return listFiles(root).find(predicate);
 }
 
-export function detectProject(rootDir: string): DetectionResult {
+function detectProjectAtRoot(rootDir: string): DetectionResult {
   const notes: string[] = [];
   const entryFiles: string[] = [];
   let projectType: ProjectType = "unknown";
@@ -225,3 +225,42 @@ function make(
 }
 
 export { listFiles };
+
+
+function findProjectRoot(rootDir: string): string {
+  const markers = ["settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts",
+    "pubspec.yaml", "package.json", "config.xml", "capacitor.config.json", "capacitor.config.ts",
+    "capacitor.config.js", "index.html", "angular.json"];
+  // root itself
+  if (markers.some(m => exists(path.join(rootDir, m)))) return rootDir;
+  // search depth 1 and 2
+  const candidates: string[] = [];
+  function collect(dir: string, depth: number) {
+    if (depth > 2) return;
+    let entries: fs.Dirent[] = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      if (e.name === "node_modules" || e.name === ".git") continue;
+      const full = path.join(dir, e.name);
+      if (markers.some(m => exists(path.join(full, m)))) candidates.push(full);
+      collect(full, depth + 1);
+    }
+  }
+  collect(rootDir, 0);
+  // prefer android project (settings.gradle) then others
+  candidates.sort((a,b) => {
+    const score = (d: string) => exists(path.join(d,"settings.gradle")) || exists(path.join(d,"settings.gradle.kts")) ? 0 : 1;
+    return score(a)-score(b);
+  });
+  return candidates.length ? candidates[0] : rootDir;
+}
+
+export function detectProject(rootDir: string): DetectionResult {
+  const actual = findProjectRoot(rootDir);
+  const res = detectProjectAtRoot(actual);
+  const rel = path.relative(rootDir, actual);
+  res.projectRoot = rel === "" ? "." : rel.replace(/\\/g, "/");
+  if (res.projectRoot !== ".") res.notes = [...(res.notes||[]), `Project root detected: ${res.projectRoot}`];
+  return res;
+}

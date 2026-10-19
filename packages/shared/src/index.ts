@@ -46,6 +46,7 @@ export interface DetectionResult {
   requiredTools: string[];
   notes: string[];
   unsupportedReason?: string;
+  projectRoot?: string;
 }
 
 export interface JobRecord {
