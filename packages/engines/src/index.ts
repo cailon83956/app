@@ -242,20 +242,44 @@ class StaticWebEngine implements EngineAdapter {
       require("fs").writeFileSync(join(src, "package.json"), JSON.stringify(minimal, null, 2));
       push("Created minimal package.json for Capacitor wrapping.");
     }
-    // Ensure a valid webDir directory exists (Capacitor rejects ".")
-    const webDir = "www";
-    const webDirPath = join(src, webDir);
-    if (!existsSync(webDirPath)) {
-      require("fs").mkdirSync(webDirPath, { recursive: true });
-      // copy all top-level files into www
+    // Determine web root containing index.html
+    let webDir = "www";
+    function findIndex(dir: string, rel: string, depth: number): string | null {
+      if (depth > 4) return null;
+      let entries: string[] = [];
+      try { entries = require("fs").readdirSync(dir); } catch { return null; }
+      if (entries.includes("index.html")) return rel === "" ? "." : rel;
+      for (const e of entries) {
+        if (e === "node_modules" || e === "android" || e === "ios" || e === ".git" || e === "www") continue;
+        const full = join(dir, e);
+        try {
+          if (require("fs").statSync(full).isDirectory()) {
+            const r = findIndex(full, rel === "" ? e : rel + "/" + e, depth + 1);
+            if (r) return r;
+          }
+        } catch {}
+      }
+      return null;
+    }
+    const idxRel = findIndex(src, "", 0);
+    if (idxRel && idxRel !== ".") {
+      webDir = idxRel;
+      push(`Detected web root: ${webDir}`);
+    } else if (idxRel === ".") {
+      webDir = "www";
+      const webDirPath = join(src, webDir);
+      if (!existsSync(webDirPath)) require("fs").mkdirSync(webDirPath, { recursive: true });
       for (const f of require("fs").readdirSync(src)) {
         if (f === "www" || f === "node_modules" || f === "android" || f === "ios") continue;
         const full = join(src, f);
-        try {
-          if (require("fs").statSync(full).isFile()) require("fs").copyFileSync(full, join(webDirPath, f));
-        } catch {}
+        try { if (require("fs").statSync(full).isFile()) require("fs").copyFileSync(full, join(webDirPath, f)); } catch {}
       }
       push(`Created ${webDir}/ with web assets.`);
+    } else {
+      webDir = "www";
+      const webDirPath = join(src, webDir);
+      if (!existsSync(webDirPath)) require("fs").mkdirSync(webDirPath, { recursive: true });
+      push("Warning: no index.html found; build may fail.");
     }
     // capacitor config
     if (!existsSync(join(src, "capacitor.config.json")) && !existsSync(join(src, "capacitor.config.ts"))) {
