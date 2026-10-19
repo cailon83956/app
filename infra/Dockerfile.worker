@@ -1,0 +1,15 @@
+FROM node:20-bookworm
+# Java + Android SDK + Gradle
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-17-jdk wget unzip && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:/opt/gradle/bin:$PATH
+# (Android SDK + Gradle to be provisioned in image build step)
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY packages ./packages
+COPY apps/worker ./apps/worker
+RUN npm install --workspaces --include-workspace-root 2>/dev/null || npm install
+RUN npm run build -w packages/shared && npm run build -w packages/detection && npm run build -w packages/engines && npm run build -w apps/worker
+CMD ["node", "apps/worker/dist/index.js"]

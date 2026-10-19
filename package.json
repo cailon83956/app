@@ -1,0 +1,18 @@
+{
+  "name": "universal-apk-builder",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:web\"",
+    "dev:api": "npm run dev -w apps/api",
+    "dev:worker": "npm run dev -w apps/worker",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "npm run build -w packages/shared && npm run build -w packages/detection && npm run build -w packages/engines && npm run build -w apps/api && npm run build -w apps/worker && npm run build -w apps/web",
+    "test": "npm run test -w packages/detection && npm run test -w apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.0"
+  }
+}
