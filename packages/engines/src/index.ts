@@ -55,7 +55,7 @@ class GradleEngine implements EngineAdapter {
     // use wrapper if present
     const wrapper = join(androidDir, "gradlew");
     const cmd = existsSync(wrapper) ? wrapper : "gradle";
-    const args = existsSync(wrapper) ? [mode] : [mode];
+    const args = existsSync(wrapper) ? [mode, "-Pkotlin.jvm.target.validation.mode=warning"] : [mode, "-Pkotlin.jvm.target.validation.mode=warning"];
     if (!existsSync(wrapper)) {
       // ensure gradle available
       if (!which("gradle")) { const e = "gradle not found"; push(e); return { success: false, error: e, logs }; }
@@ -68,7 +68,10 @@ class GradleEngine implements EngineAdapter {
     if (r.code !== 0) {
       const err = `Gradle failed (code ${r.code})`;
       push(err);
-      return { success: false, error: err, logs };
+      const tail = (r.stderr || r.stdout || "").split(/\r?\n/).filter(Boolean).slice(-40);
+      for (const l of tail) push(l);
+      logs.push(...tail);
+      return { success: false, error: err + (tail.length ? ": " + tail[tail.length-1] : ""), logs };
     }
     ctx.progress(90, "collecting");
     const apk = findApk(join(androidDir, "app", "build")) || findApk(join(androidDir, "build"));
@@ -153,7 +156,7 @@ class ReactNativeEngine implements EngineAdapter {
     const cmd = existsSync(wrapper) ? wrapper : "gradle";
     ctx.progress(40, "building");
     push(`$ ${cmd} assembleDebug`);
-    const r = await runCommand(cmd, ["assembleDebug"], { cwd: androidDir, timeoutMs: 20 * 60 * 1000 }, ctx);
+    const r = await runCommand(cmd, ["assembleDebug", "-Pkotlin.jvm.target.validation.mode=warning"], { cwd: androidDir, timeoutMs: 20 * 60 * 1000 }, ctx);
     if (r.code !== 0) { const e = `RN build failed (code ${r.code})`; push(e); return { success: false, error: e, logs }; }
     ctx.progress(90, "collecting");
     const apk = findApk(join(androidDir, "app", "build")) || findApk(androidDir);
@@ -209,7 +212,7 @@ class CapacitorEngine implements EngineAdapter {
     const cmd = existsSync(wrapper) ? wrapper : "gradle";
     ctx.progress(75, "building apk");
     push(`$ ${cmd} assembleDebug`);
-    const r = await runCommand(cmd, ["assembleDebug"], { cwd: gradleDir, timeoutMs: 20 * 60 * 1000 }, ctx);
+    const r = await runCommand(cmd, ["assembleDebug", "-Pkotlin.jvm.target.validation.mode=warning"], { cwd: gradleDir, timeoutMs: 20 * 60 * 1000 }, ctx);
     if (r.code !== 0) { const e = `Android build failed (code ${r.code})`; push(e); return { success: false, error: e, logs }; }
     ctx.progress(95, "collecting");
     const apk = findApk(join(gradleDir, "app", "build")) || findApk(gradleDir);
