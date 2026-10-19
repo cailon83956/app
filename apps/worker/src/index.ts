@@ -66,6 +66,33 @@ const worker = new Worker("builds", async (job) => {
   const artifactPath = path.join(ARTIFACT_DIR, artifactName);
   fs.copyFileSync(result.artifactPath, artifactPath);
 
+  // upload to Gofile for a shareable link
+  let shareLink: string | undefined;
+  try {
+    ctx.log("Uploading artifact to Gofile for shareable link...");
+    const serverRes = await fetch("https://api.gofile.io/servers");
+    const serverJson: any = await serverRes.json();
+    const server = serverJson?.data?.servers?.[0]?.name;
+    if (server) {
+      const buf = fs.readFileSync(artifactPath);
+      const blob = new Blob([buf], { type: "application/vnd.android.package-archive" });
+      const form = new FormData();
+      form.append("file", blob, path.basename(artifactPath));
+      const upRes = await fetch(`https://${server}.gofile.io/uploadFile`, { method: "POST", body: form });
+      const upJson: any = await upRes.json();
+      if (upJson?.status === "ok" && upJson?.data?.downloadPage) {
+        shareLink = upJson.data.downloadPage;
+        ctx.log(`Gofile link: ${shareLink}`);
+      } else {
+        ctx.log(`Gofile upload unexpected response: ${JSON.stringify(upJson).slice(0,200)}`);
+      }
+    } else {
+      ctx.log("Gofile getServer failed.");
+    }
+  } catch (e: any) {
+    ctx.log(`Gofile upload failed: ${e?.message || e}`);
+  }
+
   const buildTimeMs = Date.now() - (j.createdAt || Date.now());
   await updateJob(jobId, {
     status: "completed",
@@ -73,6 +100,7 @@ const worker = new Worker("builds", async (job) => {
     artifactPath,
     artifactSize: result.artifactSize || fs.statSync(artifactPath).size,
     buildTimeMs,
+    shareLink,
     logs: result.logs,
   });
   await appendLog(jobId, `Build completed: ${artifactPath}`);

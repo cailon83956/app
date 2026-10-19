@@ -9,7 +9,7 @@ interface Detection {
 }
 interface Job {
   id: string; filename: string; size: number; status: string; progress: number; createdAt: number; updatedAt: number;
-  detection?: Detection; artifactPath?: string; artifactSize?: number; buildTimeMs?: number; error?: string; logs: string[];
+  detection?: Detection; artifactPath?: string; artifactSize?: number; buildTimeMs?: number; shareLink?: string; error?: string; logs: string[];
 }
 
 const STATUS_COLOR: Record<string,string> = {
@@ -184,9 +184,16 @@ export default function App() {
                       </p>
                     </div>
                   </div>
-                  <a href={`${API}/jobs/${current.id}/download`} className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold flex items-center gap-2">
-                    <Download size={16} /> Tải APK
-                  </a>
+                  <div className="flex gap-2">
+                    <a href={`${API}/jobs/${current.id}/download`} className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold flex items-center gap-2">
+                      <Download size={16} /> Tải APK
+                    </a>
+                    {current.shareLink && (
+                      <a href={current.shareLink} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold flex items-center gap-2">
+                        Link chia sẻ
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
               {current.status === "failed" && (

@@ -60,6 +60,7 @@ export interface JobRecord {
   artifactPath?: string;
   artifactSize?: number;
   buildTimeMs?: number;
+  shareLink?: string;
   error?: string;
   logs: string[];
 }
